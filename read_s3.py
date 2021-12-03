@@ -12,8 +12,7 @@ class s3_extraction(object):
                        r"\S3A_SR_2_LAN____20211022T080629_20211022T085657_20211116T234524_3028_077_349______LN3_O_NT_004" \
                        r"\enhanced_measurement.nc"
         self.data_csv = r"C:\Users\baris\OneDrive - metu.edu.tr\CE-STAR\Sentinel3\data\non time " \
-                        r"critical\beysehir" \
-                        r"\S3A_SR_2_LAN____20211022T080629_20211022T085657_20211116T234524_3028_077_349______LN3_O_NT_004" \
+                        r"critical\output" \
                         r"\output"
 
     def reading_filtering(self):
@@ -41,7 +40,6 @@ class s3_extraction(object):
         #########################################################
         ##    Creating dataframes from necessary bands         ##
         #########################################################
-        a = 1
         points_20 = pd.DataFrame({'lat20': lat20,
                                 'lon20': lon20,
                                 'time20': time20,
