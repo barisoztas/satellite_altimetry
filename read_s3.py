@@ -24,17 +24,18 @@ class s3_extraction(object):
         alt = list(d.variables["alt_01"])
         wet = list(d.variables["rad_wet_tropo_cor_01_ku"])                   # values are minus, so add to range
         wet_model = list(d.variables["mod_wet_tropo_cor_zero_altitude_01"])  # values are minus, so add to range
-        dry = list(d.variables["mod_dry_tropo_cor_zero_altitude_01"])
-        tide1 = list(d.variables["solid_earth_tide_01"])                     # values are minus, so add to range
-        tide2 = list(d.variables["pole_tide_01"])
+        dry = list(d.variables["mod_dry_tropo_cor_zero_altitude_01"])        # values are minus, so add to range
+        tide1 = list(d.variables["solid_earth_tide_01"])                     # extract from range
+        tide2 = list(d.variables["pole_tide_01"])                            # extract from range
         geoid = list(d.variables["geoid_01"])
+        iono = list(d.variables["iono_cor_alt_01_ku"])                       # values are minus, so add to range
 
         time20 = list(d.variables["time_20_ku"])
         lat20 = list(d.variables["lat_20_ku"])
         lon20 = list(d.variables["lon_20_ku"])
         alt20 = list(d.variables["alt_20_ku"])
-        range20 = list(d.variables["range_ice_sheet_20_ku"])                         # values are minus, so add to range
-        iono = list(d.variables["iono_cor_alt_20_ku"])                 # values are minus, so add to range
+        range20 = list(d.variables["range_ice_sheet_20_ku"])
+        iono20 = list(d.variables["iono_cor_alt_20_ku"])                      # values are minus, so add to range
 
 
         #########################################################
@@ -46,7 +47,7 @@ class s3_extraction(object):
                                 'time20': time20,
                                 'alt_20': alt20,
                                 'range20': range20,
-                                'iono': iono})
+                                'iono20': iono20})
         points = pd.DataFrame({'lat' : lat,
                                 'lon' : lon,
                                 'time' : time,
@@ -56,7 +57,8 @@ class s3_extraction(object):
                                 'tide1': tide1,
                                 'tide2': tide2,
                                 'dry' : dry,
-                               'geoid':geoid})
+                               'geoid':geoid,
+                               'iono:' : iono})                      # values are minus, so add to range
         # roi_points_20 = points_20[((points_20['lat20'] < 37.74188) & (points_20['lat20'] > 37.66296) & (
         #             points_20['lon20'] < 30.13465) & (points_20['lon20'] > 30.08734))]        #burdur
         # roi_points = points[((points['lat'] < 37.74188) & (points['lat'] > 37.66296) & (points['lon'] < 30.13465) & (
