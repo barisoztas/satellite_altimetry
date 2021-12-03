@@ -13,7 +13,7 @@ class s3_extraction(object):
                        r"\enhanced_measurement.nc"
         self.data_csv = r"C:\Users\baris\OneDrive - metu.edu.tr\CE-STAR\Sentinel3\data\non time " \
                         r"critical\output" \
-                        r"\output"
+                        r"\output.xlsx"
 
     def reading_filtering(self):
         d = Dataset(self.nc_file)
@@ -69,10 +69,11 @@ class s3_extraction(object):
 
         return roi_points_20, roi_points
 
-    def dataframe(self, points_20, points):
-        points_20.to_csv(self.data_csv + '_20' + '.csv')
-        points.to_csv(self.data_csv + '.csv')
-
+    def dataframe_to_csv(self, points_20, points):
+        writer = pd.ExcelWriter(self.data_csv, engine='xlsxwriter')
+        points_20.to_excel(writer,sheet_name='20hz')
+        points.to_excel(writer, sheet_name='1hz')
+        writer.save()
     def run(self):
         print(f"Start time is: {self.start_time}")
         points_20, points = s3_extraction.reading_filtering(self)
