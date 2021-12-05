@@ -74,6 +74,10 @@ class s3_extraction(object):
         points_20.to_excel(writer,sheet_name='20hz')
         points.to_excel(writer, sheet_name='1hz')
         writer.save()
+    def export(self):
+        self.deneme = "abc"
+        print(self.deneme)
+
     def run(self):
         print(f"Start time is: {self.start_time}")
         points_20, points = s3_extraction.reading_filtering(self)
