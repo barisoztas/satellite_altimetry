@@ -24,6 +24,7 @@ class s3_extraction(object):
 
     def read_and_calculate(self,nc_list):
         global roi_points
+        statistics_list = []
         for nc in nc_list:
             d = Dataset(nc)
             lat = list(d.variables["lat_01"])
@@ -87,7 +88,8 @@ class s3_extraction(object):
             water_surface_height_std = np.nanstd(water_surface_height_list)
             statistics = {"Water Level":water_surface_height_median,
                           "Water Level Standard Deviation": water_surface_height_std}
-            return statistics
+            statistics_list.append(statistics)
+        return statistics_list
 
 
 
