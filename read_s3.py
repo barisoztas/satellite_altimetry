@@ -3,6 +3,7 @@ import pandas as pd
 import glob
 import pathlib
 from netCDF4 import Dataset
+import numpy as np
 
 
 
@@ -35,14 +36,14 @@ class s3_extraction(object):
             tide1 = list(d.variables["solid_earth_tide_01"])                     # extract from range
             tide2 = list(d.variables["pole_tide_01"])                            # extract from range
             geoid = list(d.variables["geoid_01"])
-            iono = list(d.variables["iono_cor_alt_01_ku"])                       # values are minus, so add to range
+            iono = list(d.variables["iono_cor_gim_01_ku"])                       # values are minus, so add to range
 
             time20 = list(d.variables["time_20_ku"])
             lat20 = list(d.variables["lat_20_ku"])
             lon20 = list(d.variables["lon_20_ku"])
             alt20 = list(d.variables["alt_20_ku"])
             range20 = list(d.variables["range_ice_sheet_20_ku"])
-            iono20 = list(d.variables["iono_cor_alt_20_ku"])                      # values are minus, so add to range
+            # iono20 = list(d.variables["iono_cor_alt_20_ku"])                      # values are minus, so add to range #check whether it is usable for lakes or not
 
             #########################################################
             ##    Creating dataframes from necessary bands         ##
@@ -50,9 +51,9 @@ class s3_extraction(object):
             points_20 = pd.DataFrame({'lat20': lat20,
                                     'lon20': lon20,
                                     'time20': time20,
-                                    'alt_20': alt20,
-                                    'range20': range20,
-                                    'iono20': iono20})
+                                    'alt20': alt20,
+                                    'range20': range20}) #,
+                                    #'iono20': iono20})
             points = pd.DataFrame({'lat' : lat,
                                     'lon' : lon,
                                     'time' : time,
@@ -63,16 +64,32 @@ class s3_extraction(object):
                                     'tide2': tide2,
                                     'dry' : dry,
                                    'geoid':geoid,
-                                   'iono:' : iono})                      # values are minus, so add to range
+                                   'iono' : iono})                      # values are minus, so add to range
             # roi_points_20 = points_20[((points_20['lat20'] < 37.74188) & (points_20['lat20'] > 37.66296) & (
             #             points_20['lon20'] < 30.13465) & (points_20['lon20'] > 30.08734))]        #burdur
             # roi_points = points[((points['lat'] < 37.74188) & (points['lat'] > 37.66296) & (points['lon'] < 30.13465) & (
             #             points['lon'] > 30.08734))]                                               #burdur
-            roi_points_20 = points_20[((points_20['lat20'] < 37.75) & (points_20['lat20'] > 37.67) & (
-                        points_20['lon20'] < 31.61) & (points_20['lon20'] > 31.49))]          #beysehir
-            roi_points = points[((points['lat'] < 37.75) & (points['lat'] > 37.67) & (points['lon'] < 31.61) & (
-                        points['lon'] > 31.49))]                                                 #beysehir
-        return roi_points_20, roi_points
+            roi_points_20 = points_20[((points_20['lat20'] < 37.75) & (points_20['lat20'] > 37.65) & (
+                        points_20['lon20'] < 31.625) & (points_20['lon20'] > 31.475))]          #beysehir
+            roi_points = points[((points['lat'] < 37.75) & (points['lat'] > 37.65) & (points['lon'] < 31.625) & (
+                        points['lon'] > 31.475))]                                                 #beysehir
+            water_surface_height_list = []
+            for index in roi_points_20.index:
+                alt = roi_points_20["alt20"][index]
+                corrected_range =  roi_points_20["range20"][index] + np.median(roi_points["wet"]) + \
+                                   np.median(roi_points["wet_model"]) + np.median(roi_points["dry"]) + \
+                                   np.median(roi_points["iono"]) - np.median(roi_points["tide1"]) - \
+                                    np.median(roi_points["tide2"])
+                water_surface_height = alt - corrected_range - np.median(roi_points["geoid"])
+                water_surface_height_list.append(water_surface_height)
+            print(water_surface_height_list)
+            water_surface_height_median = np.nanmedian(water_surface_height_list)
+            water_surface_height_std = np.nanstd(water_surface_height_list)
+            statistics = {"Water Level":water_surface_height_median,
+                          "Water Level Standard Deviation": water_surface_height_std}
+            return statistics
+
+
 
     def dataframe_to_excel(self, points_20, points):
         writer = pd.ExcelWriter(self.data_csv, engine='xlsxwriter')
