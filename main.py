@@ -5,4 +5,6 @@ a= pd.DataFrame({'a':[1]})
 c= pd.DataFrame({'c':[1]})
 b = s3_extraction()
 #b.dataframe_to_csv(a,c)
-b.export()
+path = r"C:\Users\baris\OneDrive - metu.edu.tr\CE-STAR\Sentinel3\data"
+list = b.find_files(path)
+print(list)
