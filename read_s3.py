@@ -17,7 +17,7 @@ class s3_extraction(object):
 
     def find_files(self,path):
         nc_list =[]
-        for nc_file in pathlib.Path(path).glob('**\standard_measurement.nc'):
+        for nc_file in pathlib.Path(path).glob('**/standard_measurement.nc'):
             nc_list.append(nc_file)
         return nc_list
 
@@ -74,7 +74,9 @@ class s3_extraction(object):
                     points['lon'] > 31.475))]
             return roi_points_20, roi_points
         statistics_list = []
+        counter = 0
         for nc in nc_list:
+            counter = counter+1
             roi_points_20,roi_points = read_df(nc)
             water_surface_height_list = []
             for hz20_index in roi_points_20.index:
@@ -112,6 +114,8 @@ class s3_extraction(object):
             new_wl_height_std = np.std(new_wl_height_list)
             new_statistics = {"Water Level": new_wl_height_median, "Uncertainity": new_wl_height_std}
             statistics_list.append(new_statistics)
+            percent=counter*100/len(nc_list)
+            print(f"Percent of Processed date:{percent:.2f}")
         return statistics_list
 
     def dict_to_excel(self, dict, path):
@@ -122,8 +126,9 @@ class s3_extraction(object):
 
     def run(self):
         print(f"Start time is: {self.start_time}")
-        nc_list = s3_extraction.find_files(self,r"C:\Users\baris\OneDrive - metu.edu.tr\CE-STAR\Sentinel3\data\non time critical\beysehir")
+        nc_list = s3_extraction.find_files(self,r"/home/hsaf/Baris/Sentinel3/s3_l2/nontimecritical/beysehir")
         statistics_list = s3_extraction.read_and_calculate(self,nc_list)
+        s3_extraction.calculate_time(self)
         print(statistics_list)
 
 
