@@ -106,7 +106,7 @@ class s3_extraction(object):
             new_wl_height_list = []
             for measurement in water_surface_height_list:
                 difference = abs(measurement-wl_median)
-                if difference >= 1.5 * wl_std:
+                if difference >= wl_std:
                     continue
                 else:
                     new_wl_height_list.append(measurement)
@@ -129,6 +129,7 @@ class s3_extraction(object):
         nc_list = s3_extraction.find_files(self,r"/home/hsaf/Baris/Sentinel3/s3_l2/nontimecritical/beysehir")
         statistics_list = s3_extraction.read_and_calculate(self,nc_list)
         s3_extraction.calculate_time(self)
+        print(nc_list)
         print(statistics_list)
 
 
