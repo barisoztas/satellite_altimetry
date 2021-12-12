@@ -3,6 +3,7 @@ import pandas as pd
 import pathlib
 from netCDF4 import Dataset
 import numpy as np
+import os
 
 
 
@@ -10,25 +11,39 @@ class s3_extraction(object):
     def __init__(self):
         self.start_time = datetime.datetime.now()
         self.end_time = None
+        self.input_folder = r"C:\Users\baris\OneDrive - metu.edu.tr\CE-STAR\Sentinel3\data\non time critical\beysehir"
+        self.nc_list = []
 
     def calculate_time(self):
         self.end_time = datetime.datetime.now()
         return print(f"Total time is {self.start_time-self.end_time}")
 
-    def find_nc_files(self,path):
-        nc_list =[]
-        for nc_file in pathlib.Path(path).glob('**/standard_measurement.nc'):
-            nc_list.append(nc_file)
-        return nc_list
+    def find_nc_files(self):
+        self.nc_list=[]
+        for nc_file in pathlib.Path(self.input_folder).glob('**\\standard_measurement.nc'):
+            self.nc_list.append(nc_file)
+        return self.nc_list
 
     def find_xlsx_files(self,path):
-        xlsx_list = []
-        for xlsx in pathlib.Path(path).glob(('**/**.xlsx'):
-            xlsx_list.append(xlsx)
-        return xlsx_list
+        xlsx_list_20hz = []
+        xlsx_list_1hz = []
+        for xlsx_20 in pathlib.Path(path).glob(('**/**20hz.xlsx')):
+            xlsx_list_20hz.append(xlsx_20)
 
-    def read_xlsx(xslx):
-        pass
+        for xlsx_1 in pathlib.Path(path).glob(('**/**1hz.xlsx')):
+            xlsx_list_1hz.append(xlsx_1)
+        return xlsx_list_20hz, xlsx_list_1hz
+
+    def write_to_xlsx(self):
+        for nc in self.nc_list:
+            roi_points_20, roi_points = s3_extraction.read_nc(nc)
+            write_path = os.path.split(nc)[0]
+            writer_20hz = pd.ExcelWriter(write_path+"\\output_20hz.xlsx", engine='xlsxwriter')
+            writer_1hz = pd.ExcelWriter(write_path+"\\output_1hz.xlsx", engine='xlsxwriter')
+            roi_points.to_excel(writer_1hz)
+            writer_1hz.save()
+            roi_points_20.to_excel(writer_20hz)
+            writer_20hz.save()
 
     def read_nc(nc):
         d = Dataset(nc)
@@ -72,20 +87,20 @@ class s3_extraction(object):
                                'dry': dry,
                                'geoid': geoid,
                                'iono': iono})  # values are minus, so add to range
-        roi_points_20 = points_20[((points_20['lat20'] < 37.74188) & (points_20['lat20'] > 37.66296) & (
-                points_20['lon20'] < 30.13465) & (points_20['lon20'] > 30.08734))]  # burdur
-        roi_points = points[((points['lat'] < 37.725) & (points['lat'] > 37.675) & (points['lon'] < 30.12) & (
-                points['lon'] > 30.09))]  # burdur
-        # roi_points_20 = points_20[((points_20['lat20'] < 37.75) & (points_20['lat20'] > 37.65) & (
-        #        points_20['lon20'] < 31.625) & (points_20['lon20'] > 31.475))]  # beysehir
-        # roi_points = points[((points['lat'] < 37.75) & (points['lat'] > 37.65) & (points['lon'] < 31.625) & (
-        #        points['lon'] > 31.475))]
+        #roi_points_20 = points_20[((points_20['lat20'] < 37.74188) & (points_20['lat20'] > 37.66296) & (
+        #        points_20['lon20'] < 30.13465) & (points_20['lon20'] > 30.08734))]  # burdur
+        #roi_points = points[((points['lat'] < 37.725) & (points['lat'] > 37.675) & (points['lon'] < 30.12) & (
+        #        points['lon'] > 30.09))]  # burdur
+        roi_points_20 = points_20[((points_20['lat20'] < 37.75) & (points_20['lat20'] > 37.65) & (
+                points_20['lon20'] < 31.625) & (points_20['lon20'] > 31.475))]  # beysehir
+        roi_points = points[((points['lat'] < 37.75) & (points['lat'] > 37.65) & (points['lon'] < 31.625) & (
+                points['lon'] > 31.475))]
         return roi_points_20, roi_points
 
-    def read_and_calculate_from_nc(self,nc_list):
+    def read_and_calculate_from_nc(self):
         statistics_list = []
         counter = 0
-        for nc in nc_list:
+        for nc in self.nc_list:
             counter = counter+1
             roi_points_20,roi_points = s3_extraction.read_nc(nc)
             water_surface_height_list = []
@@ -124,10 +139,9 @@ class s3_extraction(object):
             new_wl_height_std = np.std(new_wl_height_list)
             new_statistics = {"Water Level": new_wl_height_median, "Uncertainity": new_wl_height_std}
             statistics_list.append(new_statistics)
-            percent=counter*100/len(nc_list)
+            percent=counter*100/len(self.nc_list)
             print(f"Percent of Processed date:{percent:.2f}")
         return statistics_list
-
 
     def read_and_calculate_from_xlsx(self,xlsx_list):
         statistics_list = []
@@ -171,7 +185,7 @@ class s3_extraction(object):
             new_wl_height_std = np.std(new_wl_height_list)
             new_statistics = {"Water Level": new_wl_height_median, "Uncertainity": new_wl_height_std}
             statistics_list.append(new_statistics)
-            percent=counter*100/len(nc_list)
+            percent=counter*100/len(self.nc_list)
             print(f"Percent of Processed date:{percent:.2f}")
         return statistics_list
 
@@ -183,11 +197,8 @@ class s3_extraction(object):
 
     def run(self):
         print(f"Start time is: {self.start_time}")
-        nc_list = s3_extraction.find_files(self,r"C:\Users\baris\OneDrive - metu.edu.tr\CE-STAR\Sentinel3\data\non time critical\burdur")
-        statistics_list = s3_extraction.read_and_calculate(self,nc_list)
-        s3_extraction.calculate_time(self)
-        print(nc_list)
-        print(statistics_list)
+        s3_extraction.find_nc_files(self)
+        s3_extraction.write_to_xlsx(self)
 
 
 if __name__ == "__main__":
