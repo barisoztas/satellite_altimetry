@@ -4,6 +4,7 @@ import pathlib
 from netCDF4 import Dataset
 import numpy as np
 import os
+import dateutil.parser
 
 
 
@@ -15,6 +16,7 @@ class s3_extraction(object):
         self.nc_list = []
         self.xlsx_list_20hz = []
         self.xlsx_list_1hz = []
+        self.output_folder = r"C:\Users\baris\OneDrive - metu.edu.tr\CE-STAR\Sentinel3\data\non time critical\beysehir\output"
 
     def calculate_time(self):
         self.end_time = datetime.datetime.now()
@@ -35,7 +37,9 @@ class s3_extraction(object):
         return self.xlsx_list_20hz, self.xlsx_list_1hz
 
     def write_to_xlsx(self):
+        counter = 0
         for nc in self.nc_list:
+            counter = counter+1
             roi_points_20, roi_points = s3_extraction.read_nc(nc)
             write_path = os.path.split(nc)[0]
             writer_20hz = pd.ExcelWriter(write_path+"\\output_20hz.xlsx", engine='xlsxwriter')
@@ -44,6 +48,8 @@ class s3_extraction(object):
             writer_1hz.save()
             roi_points_20.to_excel(writer_20hz)
             writer_20hz.save()
+            percent = counter/len(self.nc_list)*100
+            print(f"Percent of exported dates:{percent:.2f}")
 
     def read_nc(nc):
         d = Dataset(nc)
@@ -97,12 +103,11 @@ class s3_extraction(object):
                 points['lon'] > 31.475))]
         return roi_points_20, roi_points
 
-    def read_xlsx(self):
-        for index in range(len(self.xlsx_list_20hz)):
-            roi_points_20   = pd.read_excel(self.xlsx_list_20hz[index])
-            roi_points      = pd.read_excel(self.xlsx_list_1hz[index])
-            roi_points_20   =roi_points_20.set_index('Unnamed: 0')
-            roi_points      =roi_points.set_index('Unnamed: 0')
+    def read_xlsx(self,path_20,path_1):
+        roi_points_20   = pd.read_excel(path_20)
+        roi_points      = pd.read_excel(path_1)
+        roi_points_20   =roi_points_20.set_index('Unnamed: 0')
+        roi_points      =roi_points.set_index('Unnamed: 0')
         return roi_points_20, roi_points
 
     def read_and_calculate_from_nc(self):
@@ -156,7 +161,7 @@ class s3_extraction(object):
         counter = 0
         for i in range(len(self.xlsx_list_1hz)):
             counter = counter+1
-            roi_points_20,roi_points = s3_extraction.read_xlsx(self)
+            roi_points_20,roi_points = s3_extraction.read_xlsx(self,self.xlsx_list_20hz[i], self.xlsx_list_1hz[i])
             water_surface_height_list = []
             for hz20_index in roi_points_20.index:
                 if roi_points_20["alt20"][hz20_index] =='--' or roi_points_20["range20"][hz20_index] =='--':
@@ -195,20 +200,40 @@ class s3_extraction(object):
             statistics_list.append(new_statistics)
             percent=counter*100/len(self.xlsx_list_20hz)
             print(f"Percent of Processed date:{percent:.2f}")
-        return statistics_list
+        self.statistics_list = statistics_list
+        return self.statistics_list
 
-    def dict_to_excel(self, dict, path):
-        df = pd.DataFrame(data=dict,index=[0])
-        writer = pd.ExcelWriter(path, engine='xlsxwriter')
-        df.to_excel(writer,sheet_name='results')
+
+    def report_output(self):
+        water_levels=[]
+        uncertainities =[]
+        dates = []
+        for i in range(len(self.statistics_list)):
+            water_levels.append(self.statistics_list[i]['Water Level'])
+            uncertainities.append(self.statistics_list[i]['Uncertainity'])
+            s3_date = ((os.path.split(os.path.split(self.xlsx_list_20hz[i])[0])[1]).split("__")[2]).split("_")[0]
+            d = dateutil.parser.parse(s3_date)
+            s3_date = d.strftime('%m-%d-%Y %H:%M')
+            dates.append(s3_date)
+        result_dict = {"Date": dates,
+                       "Water Surface Height Above Reference Datum":water_levels,
+                       "Water Surface Height Uncertainty": uncertainities}
+        results_df = pd.DataFrame.from_dict(result_dict)
+        writer = pd.ExcelWriter(self.output_folder + "\\Results.xlsx", engine='xlsxwriter')
+        results_df.to_excel(writer,index=False)
         writer.save()
-
-    def run(self):
+    def run_from_xlsx(self):
         print(f"Start time is: {self.start_time}")
         xlsx_list_20hz, xlsx_list_1hz = s3_extraction.find_xlsx_files(self)
         statistics_list= s3_extraction.read_and_calculate_from_xlsx(self)
         print(statistics_list)
+        s3_extraction.report_output(self)
+
+    def export_to_excel(self):
+        s3_extraction.find_nc_files(self)
+        s3_extraction.write_to_xlsx(self)
 
 if __name__ == "__main__":
     s3_extraction_object = s3_extraction()
-    s3_extraction_object.run()
+    #s3_extraction_object.export_to_excel()
+    s3_extraction_object.run_from_xlsx()
