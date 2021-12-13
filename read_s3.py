@@ -13,6 +13,8 @@ class s3_extraction(object):
         self.end_time = None
         self.input_folder = r"C:\Users\baris\OneDrive - metu.edu.tr\CE-STAR\Sentinel3\data\non time critical\beysehir"
         self.nc_list = []
+        self.xlsx_list_20hz = []
+        self.xlsx_list_1hz = []
 
     def calculate_time(self):
         self.end_time = datetime.datetime.now()
@@ -24,15 +26,13 @@ class s3_extraction(object):
             self.nc_list.append(nc_file)
         return self.nc_list
 
-    def find_xlsx_files(self,path):
-        xlsx_list_20hz = []
-        xlsx_list_1hz = []
-        for xlsx_20 in pathlib.Path(path).glob(('**/**20hz.xlsx')):
-            xlsx_list_20hz.append(xlsx_20)
+    def find_xlsx_files(self):
+        for xlsx_20 in pathlib.Path(self.input_folder).glob(('**\\*20hz.xlsx')):
+            self.xlsx_list_20hz.append(xlsx_20)
 
-        for xlsx_1 in pathlib.Path(path).glob(('**/**1hz.xlsx')):
-            xlsx_list_1hz.append(xlsx_1)
-        return xlsx_list_20hz, xlsx_list_1hz
+        for xlsx_1 in pathlib.Path(self.input_folder).glob(('**\\*1hz.xlsx')):
+            self.xlsx_list_1hz.append(xlsx_1)
+        return self.xlsx_list_20hz, self.xlsx_list_1hz
 
     def write_to_xlsx(self):
         for nc in self.nc_list:
@@ -97,6 +97,14 @@ class s3_extraction(object):
                 points['lon'] > 31.475))]
         return roi_points_20, roi_points
 
+    def read_xlsx(self):
+        for index in range(len(self.xlsx_list_20hz)):
+            roi_points_20   = pd.read_excel(self.xlsx_list_20hz[index])
+            roi_points      = pd.read_excel(self.xlsx_list_1hz[index])
+            roi_points_20   =roi_points_20.set_index('Unnamed: 0')
+            roi_points      =roi_points.set_index('Unnamed: 0')
+        return roi_points_20, roi_points
+
     def read_and_calculate_from_nc(self):
         statistics_list = []
         counter = 0
@@ -105,17 +113,17 @@ class s3_extraction(object):
             roi_points_20,roi_points = s3_extraction.read_nc(nc)
             water_surface_height_list = []
             for hz20_index in roi_points_20.index:
-                if np.ma.is_masked(roi_points_20["alt20"][hz20_index]) | np.ma.is_masked(roi_points_20["range20"][hz20_index]):
+                if (roi_points_20["alt20"][hz20_index]) or (roi_points_20["range20"][hz20_index]):
                     continue
                 else:
                     alt = roi_points_20["alt20"][hz20_index]
                     correction_list = []
                     for hz1_index in roi_points.index:
-                        if np.ma.is_masked(roi_points["wet"][hz1_index]) | np.ma.is_masked(
-                                roi_points["wet_model"][hz1_index]) | np.ma.is_masked(
-                            roi_points["dry"][hz1_index]) | np.ma.is_masked(
-                            roi_points["iono"][hz1_index]) | np.ma.is_masked(
-                            roi_points["tide1"][hz1_index]) | np.ma.is_masked(roi_points["tide2"][hz1_index]):
+                        if (roi_points["wet"][hz1_index]) or (
+                                roi_points["wet_model"][hz1_index]) or (
+                            roi_points["dry"][hz1_index]) or (
+                            roi_points["iono"][hz1_index]) or (
+                            roi_points["tide1"][hz1_index]) or (roi_points["tide2"][hz1_index]):
                             continue
                         else:
                             correction = (roi_points["wet"][hz1_index]) + (roi_points["wet_model"][hz1_index]) + (
@@ -143,25 +151,25 @@ class s3_extraction(object):
             print(f"Percent of Processed date:{percent:.2f}")
         return statistics_list
 
-    def read_and_calculate_from_xlsx(self,xlsx_list):
+    def read_and_calculate_from_xlsx(self):
         statistics_list = []
         counter = 0
-        for xlsx in xlsx_list:
+        for i in range(len(self.xlsx_list_1hz)):
             counter = counter+1
-            roi_points_20,roi_points = s3_extraction.read_xlsx(xlsx)
+            roi_points_20,roi_points = s3_extraction.read_xlsx(self)
             water_surface_height_list = []
             for hz20_index in roi_points_20.index:
-                if np.ma.is_masked(roi_points_20["alt20"][hz20_index]) | np.ma.is_masked(roi_points_20["range20"][hz20_index]):
+                if roi_points_20["alt20"][hz20_index] =='--' or roi_points_20["range20"][hz20_index] =='--':
                     continue
                 else:
                     alt = roi_points_20["alt20"][hz20_index]
                     correction_list = []
                     for hz1_index in roi_points.index:
-                        if np.ma.is_masked(roi_points["wet"][hz1_index]) | np.ma.is_masked(
-                                roi_points["wet_model"][hz1_index]) | np.ma.is_masked(
-                            roi_points["dry"][hz1_index]) | np.ma.is_masked(
-                            roi_points["iono"][hz1_index]) | np.ma.is_masked(
-                            roi_points["tide1"][hz1_index]) | np.ma.is_masked(roi_points["tide2"][hz1_index]):
+                        if (roi_points["wet"][hz1_index]) =='--' or (
+                                roi_points["wet_model"][hz1_index]) =='--' or (
+                            roi_points["dry"][hz1_index]) =='--' or (
+                            roi_points["iono"][hz1_index])  =='--'or (
+                            roi_points["tide1"][hz1_index]) =='--' or (roi_points["tide2"][hz1_index]) =='--':
                             continue
                         else:
                             correction = (roi_points["wet"][hz1_index]) + (roi_points["wet_model"][hz1_index]) + (
@@ -185,7 +193,7 @@ class s3_extraction(object):
             new_wl_height_std = np.std(new_wl_height_list)
             new_statistics = {"Water Level": new_wl_height_median, "Uncertainity": new_wl_height_std}
             statistics_list.append(new_statistics)
-            percent=counter*100/len(self.nc_list)
+            percent=counter*100/len(self.xlsx_list_20hz)
             print(f"Percent of Processed date:{percent:.2f}")
         return statistics_list
 
@@ -197,9 +205,9 @@ class s3_extraction(object):
 
     def run(self):
         print(f"Start time is: {self.start_time}")
-        s3_extraction.find_nc_files(self)
-        s3_extraction.write_to_xlsx(self)
-
+        xlsx_list_20hz, xlsx_list_1hz = s3_extraction.find_xlsx_files(self)
+        statistics_list= s3_extraction.read_and_calculate_from_xlsx(self)
+        print(statistics_list)
 
 if __name__ == "__main__":
     s3_extraction_object = s3_extraction()
