@@ -16,6 +16,7 @@ class j3_extraction(object):
         self.xlsx_list_20hz = []
         self.xlsx_list_1hz = []
         self.output_folder = r"/home/baris/altimetry/jason/jason3/beysehir/output"
+        self.statistics_list =[]
 
     def calculate_time(self):
         self.end_time = datetime.datetime.now()
@@ -159,46 +160,49 @@ class j3_extraction(object):
         for i in range(len(self.xlsx_list_1hz)):
             counter = counter + 1
             roi_points_20, roi_points = j3_extraction.read_xlsx(self, self.xlsx_list_20hz[i], self.xlsx_list_1hz[i])
-            water_surface_height_list = []
-            for hz20_index in roi_points_20.index:
-                if roi_points_20["alt20"][hz20_index] == '--' or roi_points_20["range20"][hz20_index] == '--':
-                    continue
-                else:
-                    alt = roi_points_20["alt20"][hz20_index]
-                    correction_list = []
-                    for hz1_index in roi_points.index:
-                        if (roi_points["wet"][hz1_index]) == '--' or (
-                                roi_points["dry"][hz1_index]) == '--' or (
-                                roi_points["iono"][hz1_index]) == '--' or (
-                                roi_points["tide1"][hz1_index]) == '--' or (roi_points["tide2"][hz1_index]) == '--' or (
-                                roi_points["rad_wet"][hz1_index]) == '--':
-                            continue
-                        else:
-                            correction = (roi_points["wet"][hz1_index]) + (
-                                roi_points["dry"][hz1_index]) + (roi_points["iono"][hz1_index]) + (
-                                             roi_points["tide1"][hz1_index]) + (roi_points["tide2"][hz1_index]) + (
-                                             roi_points["rad_wet"][hz1_index]
-                                         )
-                            correction_list.append(correction)
-                    correction = np.median(correction_list)
-                    water_surface_height = alt - (roi_points_20["range20"][hz20_index] + correction) - roi_points[
-                        "geoid"].median()
-                water_surface_height_list.append(water_surface_height)
-            wl_median = np.median(water_surface_height_list)
-            wl_std = np.std(water_surface_height_list)
-            new_wl_height_list = []
-            for measurement in water_surface_height_list:
-                difference = abs(measurement - wl_median)
-                if difference >= wl_std:
-                    continue
-                else:
-                    new_wl_height_list.append(measurement)
-            new_wl_height_median = np.median(new_wl_height_list)
-            new_wl_height_std = np.std(new_wl_height_list)
-            new_statistics = {"Water Level": new_wl_height_median, "Uncertainity": new_wl_height_std}
-            statistics_list.append(new_statistics)
-            percent = counter * 100 / len(self.xlsx_list_20hz)
-            print(f"Percent of Processed date:{percent:.2f}")
+
+            if len(roi_points_20)==0 or len(roi_points)==0:
+                new_statistics = {"Water Level": [], "Uncertainity": []}
+                statistics_list.append(new_statistics)
+            else:
+
+                water_surface_height_list = []
+                for hz20_index in roi_points_20.index:
+                    if roi_points_20["alt20"][hz20_index] == 'nan' or roi_points_20["range20"][hz20_index] == 'nan':
+                        continue
+                    else:
+                        alt = roi_points_20["alt20"][hz20_index]
+                        correction_list = []
+                        for hz1_index in roi_points.index:
+                            if (roi_points["rad_wet"][hz1_index]) == '--' or (
+                                    roi_points["dry"][hz1_index]) == '--' or (
+                                    roi_points["iono"][hz1_index]) == '--' or (
+                                    roi_points["tide1"][hz1_index]) == '--' or (roi_points["tide2"][hz1_index]) == '--':
+                                continue
+                            else:
+                                correction = (roi_points["rad_wet"][hz1_index]) + (
+                                    roi_points["dry"][hz1_index]) + (roi_points["iono"][hz1_index]) + (
+                                                 roi_points["tide1"][hz1_index]) + (roi_points["tide2"][hz1_index])
+                                correction_list.append(correction)
+                        correction = np.median(correction_list)
+                        water_surface_height = alt - (roi_points_20["range20"][hz20_index] + correction) - roi_points[
+                            "geoid"].median()
+                    water_surface_height_list.append(water_surface_height)
+                wl_median = np.nanmedian(np.array(water_surface_height_list))
+                wl_std = np.nanstd(np.array(water_surface_height_list))
+                new_wl_height_list = []
+                for measurement in water_surface_height_list:
+                    difference = abs(measurement - wl_median)
+                    if difference >= wl_std:
+                        continue
+                    else:
+                        new_wl_height_list.append(measurement)
+                new_wl_height_median = np.nanmedian(np.array(new_wl_height_list))
+                new_wl_height_std = np.nanstd(np.array(new_wl_height_list))
+                new_statistics = {"Water Level": new_wl_height_median, "Uncertainity": new_wl_height_std}
+                statistics_list.append(new_statistics)
+                percent = counter * 100 / len(self.xlsx_list_20hz)
+                print(f"Percent of Processed date:{percent:.2f}")
         self.statistics_list = statistics_list
         return self.statistics_list
 
