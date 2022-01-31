@@ -71,7 +71,7 @@ class s3_extraction(object):
         lat20 = list(d.variables["lat_20_ku"])
         lon20 = list(d.variables["lon_20_ku"])
         alt20 = list(d.variables["alt_20_ku"])
-        range20 = list(d.variables["range_ice_sheet_20_ku"])
+        range20 = list(d.variables["range_ocog_20_ku"])
         iono20 = list(d.variables["iono_cor_alt_20_ku"])                      # values are minus, so add to range
         # #check whether it is usable for lakes or not
 
@@ -120,7 +120,8 @@ class s3_extraction(object):
             roi_points_20,roi_points = s3_extraction.read_nc(nc)
             water_surface_height_list = []
             for hz20_index in roi_points_20.index:
-                if (roi_points_20["alt20"][hz20_index]) or (roi_points_20["range20"][hz20_index]):
+                if (roi_points_20["alt20"][hz20_index]) or (roi_points_20["range20"][hz20_index]) or \
+                        (roi_points_20["iono20"][hz20_index]):
                     continue
                 else:
                     alt = roi_points_20["alt20"][hz20_index]
