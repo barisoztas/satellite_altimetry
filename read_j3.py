@@ -55,9 +55,10 @@ class j3_extraction(object):
                                       'alt20': [],
                                       'range20': []})
 
-        if d.title == 'GDR - Standard dataset' or len(d.variables) == 1 or len(d.variables) == 0:
+        if d.title != 'GDR - Standard dataset' or len(d.variables)==0:      # omit reduced datasets = no variable available
             return roi_points_20, roi_points
 
+        # read 1hz measurement
         lat = list(d.variables["lat"])
         lon = list(d.variables["lon"])
         time = list(d.variables["time"])
@@ -71,7 +72,7 @@ class j3_extraction(object):
         tide1 = list(d.variables["solid_earth_tide"])
         tide2 = list(d.variables["pole_tide"])
         geoid = list(d.variables["geoid"])
-
+        # read 20hz measurement
         time20_pack = list(d.variables["time_20hz"])
         lat20_pack = list(d.variables["lat_20hz"])
         lon20_pack = list(d.variables["lon_20hz"])
@@ -87,11 +88,9 @@ class j3_extraction(object):
                                    'time': time,
                                    'alt': alt,
                                    'range_ku': range_ku,
-                                   'wet': wet,
                                    'rad_wet': wet_rad,
                                    'dry': dry,
                                    'iono': iono,
-                                   'iono_gim_model': iono_gim_model,
                                    'tide1': tide1,
                                    'tide2': tide2,
                                    'geoid': geoid})
@@ -102,6 +101,7 @@ class j3_extraction(object):
         range20 = []
         alt20 = []
 
+        # convert them to list type
         for i in range(len(time20_pack)):
             lat20.append(lat20_pack[i].tolist())
             lon20.append(lon20_pack[i].tolist())
@@ -209,7 +209,7 @@ class j3_extraction(object):
         for i in range(len(self.statistics_list)):
             water_levels.append(self.statistics_list[i]['Water Level'])
             uncertainities.append(self.statistics_list[i]['Uncertainity'])
-            j3_date = ((os.path.split(os.path.split(self.xlsx_list_20hz[i])[0])[1]).split("__")[2]).split("_")[0]
+            j3_date = ((os.path.split(os.path.split(self.xlsx_list_20hz[i])[0])[1]).split("_")[4])
             d = dateutil.parser.parse(j3_date)
             s3_date = d.strftime('%d-%m-%Y')
             dates.append(s3_date)
@@ -227,7 +227,7 @@ class j3_extraction(object):
 
     def run_from_xlsx(self):
         print(f"Start time is: {self.start_time}")
-        xlsx_list_20hz, xlsx_list_1hz = j3_extraction.find_xlsx_files(self)
+        j3_extraction.find_xlsx_files(self)
         statistics_list = j3_extraction.read_and_calculate_from_xlsx(self)
         print(statistics_list)
         j3_extraction.report_output(self)
@@ -235,5 +235,5 @@ class j3_extraction(object):
 
 if __name__ == "__main__":
     j3_extraction_object = j3_extraction()
-    j3_extraction_object.export_to_excel()
-    # j3_extraction_object.run_from_xlsx()
+    #j3_extraction_object.export_to_excel()
+    j3_extraction_object.run_from_xlsx()
