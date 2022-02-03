@@ -16,7 +16,7 @@ class j3_extraction(object):
         self.xlsx_list_20hz = []
         self.xlsx_list_1hz = []
         self.output_folder = r"/home/baris/altimetry/jason/jason3/beysehir/output"
-        self.statistics_list =[]
+        self.statistics_list = []
 
     def calculate_time(self):
         self.end_time = datetime.datetime.now()
@@ -38,47 +38,30 @@ class j3_extraction(object):
 
     def read_nc(nc):
         d = Dataset(nc)
-        roi_points = pd.DataFrame({'lat': [],
-                                   'lon': [],
-                                   'time': [],
-                                   'alt': [],
-                                   'range_ku': [],
-                                   'wet': [],
-                                   'rad_wet': [],
-                                   'dry': [],
-                                   'iono': [],
-                                   'tide1': [],
-                                   'tide2': [],
-                                   'geoid': []})
-        roi_points_20 = pd.DataFrame({"time20": [],
-                                      'lat20': [],
-                                      'lon20': [],
-                                      'alt20': [],
-                                      'range20': []})
-
-        if d.title != 'GDR - Standard dataset' or len(d.variables)==0:      # omit reduced datasets = no variable available
-            return roi_points_20, roi_points
 
         # read 1hz measurement
+
         lat = list(d.variables["lat"])
         lon = list(d.variables["lon"])
         time = list(d.variables["time"])
         alt = list(d.variables["alt"])
         range_ku = list(d.variables["range_ku"])
         dry = list(d.variables["model_dry_tropo_corr"])  # values are minus, so add to range
-        #wet = list(d.variables["model_wet_tropo_corr"])
-        wet_rad = list(d.variables["rad_wet_tropo_corr"])
-        iono = list(d.variables["iono_corr_alt_ku"])
-        #iono_gim_model = list(d.variables["iono_corr_gim_ku"])
+        model_wet = list(d.variables["model_wet_tropo_corr"])
+        instrument_wet = list(d.variables["rad_wet_tropo_corr"])
+        model_iono = list(d.variables["iono_corr_alt_ku"])
+        instrument_iono = list(d.variables["iono_corr_gim_ku"])
         tide1 = list(d.variables["solid_earth_tide"])
         tide2 = list(d.variables["pole_tide"])
         geoid = list(d.variables["geoid"])
+
         # read 20hz measurement
         time20_pack = list(d.variables["time_20hz"])
         lat20_pack = list(d.variables["lat_20hz"])
         lon20_pack = list(d.variables["lon_20hz"])
         alt20_pack = list(d.variables["alt_20hz"])
-        range20_pack = list(d.variables["range_20hz_ku"])
+        range20_pack = list(d.variables["ice_range_20hz_ku"])
+        sig20_pack = list(d.variables["ice_sig0_20hz_ku"])
 
         #########################################################
         ##    Creating dataframes from necessary bands         ##
@@ -89,9 +72,11 @@ class j3_extraction(object):
                                    'time': time,
                                    'alt': alt,
                                    'range_ku': range_ku,
-                                   'rad_wet': wet_rad,
+                                   'model_wet':model_wet,
+                                   'instrument_wet': instrument_wet,
                                    'dry': dry,
-                                   'iono': iono,
+                                   'model_iono': model_iono,
+                                   'instrument_iono':instrument_iono,
                                    'tide1': tide1,
                                    'tide2': tide2,
                                    'geoid': geoid})
@@ -101,6 +86,7 @@ class j3_extraction(object):
         time20 = []
         range20 = []
         alt20 = []
+        sig20 = []
 
         # convert them to list type
         for i in range(len(time20_pack)):
@@ -109,18 +95,21 @@ class j3_extraction(object):
             time20.append(time20_pack[i].tolist())
             range20.append(range20_pack[i].tolist())
             alt20.append(alt20_pack[i].tolist())
+            sig20.append(sig20_pack[i].tolist())
 
         lat20 = sum(lat20, [])
         lon20 = sum(lon20, [])
         time20 = sum(time20, [])
         range20 = sum(range20, [])
         alt20 = sum(alt20, [])
+        sig20 = sum(sig20,[])
 
         roi_points_20 = pd.DataFrame({"time20": time20,
                                       'lat20': lat20,
                                       'lon20': lon20,
                                       'alt20': alt20,
-                                      'range20': range20})
+                                      'range20': range20,
+                                      'sig20':sig20})
 
         # roi_points_20 = points_20[(points_20['lat20'] < 37.740) & (points_20['lat20'] > 37.670)]  # burdur
         # roi_points = points[(points['lat'] < 37.740) & (points['lat'] > 37.670) ]  # burdur
@@ -165,24 +154,42 @@ class j3_extraction(object):
                 new_statistics = {"Water Level": [], "Uncertainity": []}
                 statistics_list.append(new_statistics)
             else:
-
                 water_surface_height_list = []
                 for hz20_index in roi_points_20.index:
-                    if roi_points_20["alt20"][hz20_index] == 'nan' or roi_points_20["range20"][hz20_index] == 'nan':
+                    if roi_points_20["alt20"][hz20_index] == 'nan' or roi_points_20["range20"][hz20_index] == 'nan' or \
+                            roi_points_20["sig20"][hz20_index]<7 or roi_points_20["sig20"][hz20_index] > 40 :
                         continue
                     else:
                         alt = roi_points_20["alt20"][hz20_index]
                         correction_list = []
                         for hz1_index in roi_points.index:
-                            if (roi_points["rad_wet"][hz1_index]) == '--' or (
-                                    roi_points["dry"][hz1_index]) == '--' or (
-                                    roi_points["iono"][hz1_index]) == '--' or (
-                                    roi_points["tide1"][hz1_index]) == '--' or (roi_points["tide2"][hz1_index]) == '--':
+                            if (roi_points["dry"][hz1_index]) == '--' or (
+                                    roi_points["tide1"][hz1_index]) == '--' or (
+                                    roi_points["tide2"][hz1_index]) == '--':
                                 continue
                             else:
-                                correction = (roi_points["rad_wet"][hz1_index]) + (
-                                    roi_points["dry"][hz1_index]) + (roi_points["iono"][hz1_index]) + (
-                                                 roi_points["tide1"][hz1_index]) + (roi_points["tide2"][hz1_index])
+                                wet_correction = roi_points["instrument_wet"][hz1_index]
+                                iono_correction = roi_points["instrument_iono"][hz1_index]
+                                dry_correction = roi_points["dry"][hz1_index]
+                                tide1 = roi_points["tide1"][hz1_index]
+                                tide2 = roi_points["tide2"][hz1_index]
+                                if iono_correction == '--':
+                                    iono_correction = (roi_points["model_iono"][hz1_index])
+                                if wet_correction == '--':
+                                    wet_correction = roi_points["model_wet"][hz1_index]
+                                if (dry_correction>-2.5) and (dry_correction < -1.2):
+                                    var = True
+                                else:
+                                    continue
+                                if (wet_correction > -0.8) and (wet_correction < 0.01):
+                                    var = True
+                                else:
+                                    wet_correction = roi_points["model_wet"][hz1_index]
+                                if (iono_correction > -0.4) and (iono_correction < 0.004):
+                                    var = True
+                                else:
+                                    wet_correction = roi_points["model_iono"][hz1_index]
+                                correction = wet_correction + dry_correction + iono_correction + tide1 + tide2
                                 correction_list.append(correction)
                         correction = np.median(correction_list)
                         water_surface_height = alt - (roi_points_20["range20"][hz20_index] + correction) - roi_points[

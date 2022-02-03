@@ -12,7 +12,7 @@ Version 1.0: Updated at 08-12-2021 \
 Version 1.1: Update at 13-12-2021 \
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Can read Sentinel 3 Measurements from netCDF files and export them to xlsx format. Calculate water surface height and print results to excel
 Version 1.2: Update at 07-01-2022 \
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; I will be add different waveform retracking algorithms. Also, implementation of Jason 1-2-3 will be added soon. Stay tuned.
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; I will be adding different waveform retracking algorithms. Also, implementation of Jason 1-2-3 will be added soon. Stay tuned.
 
 
 ## Contact
